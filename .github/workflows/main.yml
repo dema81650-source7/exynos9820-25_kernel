@@ -16,11 +16,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
-          git config --global user.email "bot@example.com"
-          git config --global user.name "KernelBot"
-          git checkout cruel
           
-          # The Trick: Create a fake update_magisk.sh to bypass the crash
+          # Fix the script logic directly to bypass IndexError at line 585
+          sed -i '585s/.*/    branch = "cruel"/' cruelbuild
+          
+          # Bypass Magisk update crash
           mkdir -p usr/magisk/
           echo "#!/bin/sh" > usr/magisk/update_magisk.sh
           echo "exit 0" >> usr/magisk/update_magisk.sh
