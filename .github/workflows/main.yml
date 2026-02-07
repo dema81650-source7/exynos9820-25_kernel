@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           ref: cruel
           fetch-depth: 0
@@ -15,9 +15,11 @@ jobs:
       - name: Setup Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git
+          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3
           git config --global user.email "bot@example.com"
           git config --global user.name "KernelBot"
+          git checkout cruel
+          git submodule update --init --recursive || true
 
       - name: Configure and Build
         run: |
