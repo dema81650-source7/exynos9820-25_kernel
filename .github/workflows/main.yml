@@ -17,14 +17,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
           
-          # الحل الجذري: إجبار النظام على تثبيت اسم الفرع في الإعدادات
-          git config --global user.email "bot@example.com"
-          git config --global user.name "KernelBot"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          git checkout -B cruel
-          git branch --set-upstream-to=origin/cruel cruel
+          # Force branch name to prevent IndexError
+          sed -i 's/branch = run(\[.*\])/branch = "cruel"/g' cruelbuild
           
-          # تجاوز مشكلة Magisk (Status 11)
+          # Fix Magisk crash (exit status 11)
           mkdir -p usr/magisk/
           echo "#!/bin/sh" > usr/magisk/update_magisk.sh
           echo "exit 0" >> usr/magisk/update_magisk.sh
