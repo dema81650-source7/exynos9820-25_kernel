@@ -28,7 +28,7 @@ jobs:
             model=N975F \
             toolchain=proton \
             name="Cruel-Hunter-Elite-120FPS" \
-            +magisk=26.4 \
+            +magisk=v20.4 \
             +wireguard \
             +ttl \
             +nohardening \
