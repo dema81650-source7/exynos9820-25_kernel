@@ -15,11 +15,10 @@ jobs:
       - name: Setup Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip lib32z1
+          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
           git config --global user.email "bot@example.com"
           git config --global user.name "KernelBot"
           git checkout cruel
-          git submodule update --init --recursive || true
 
       - name: Configure and Build
         run: |
@@ -28,7 +27,6 @@ jobs:
             model=N975F \
             toolchain=proton \
             name="Cruel-Hunter-Elite-120FPS" \
-            +magisk=v20.4 \
             +wireguard \
             +ttl \
             +nohardening \
@@ -50,3 +48,9 @@ jobs:
             +1000hz
           
           ./cruelbuild mkimg model=N975F
+
+      - name: Upload Kernel
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cruel-Kernel-Note10Plus
+          path: out/*.zip
