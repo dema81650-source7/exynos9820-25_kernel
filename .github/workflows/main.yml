@@ -34,12 +34,12 @@ jobs:
             +boeffla_wl_blocker \
             +force_dex_wqhd \
             +usb_serial \
-            empty_vbmeta \
-            performance \
-            simple_lmk \
-            tcp_bbr \
-            tcp_westwood \
-            io_zen \
-            fp_boost \
+            +empty_vbmeta \
+            +performance \
+            +simple_lmk \
+            +tcp_bbr \
+            +tcp_westwood \
+            +io_zen \
+            +fp_boost \
             750hz
           ./cruelbuild mkimg
