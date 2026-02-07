@@ -41,5 +41,5 @@ jobs:
             +tcp_westwood \
             +io_zen \
             +fp_boost \
-            hz1000
+            +1000hz
           ./cruelbuild mkimg
