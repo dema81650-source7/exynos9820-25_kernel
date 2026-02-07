@@ -16,13 +16,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
+          # Fix Git Environment to prevent IndexError
           git config --global user.email "bot@example.com"
           git config --global user.name "KernelBot"
           git checkout cruel
+          git pull origin cruel
+          git submodule update --init --recursive || true
 
       - name: Configure and Build
         run: |
           chmod +x cruelbuild
+          # Build without Magisk to avoid exit status 11
           ./cruelbuild config \
             model=N975F \
             toolchain=proton \
