@@ -10,17 +10,21 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: cruel
+          fetch-depth: 0
 
       - name: Setup Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb
+          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git
+          git config --global user.email "bot@example.com"
+          git config --global user.name "KernelBot"
 
       - name: Configure and Build
         run: |
           chmod +x cruelbuild
           ./cruelbuild config \
             model=N975F \
+            toolchain=gcc \
             name="Cruel-Hunter-Elite-120FPS" \
             +magisk \
             +wireguard \
@@ -42,4 +46,5 @@ jobs:
             +io_zen \
             +fp_boost \
             +1000hz
+          
           ./cruelbuild mkimg model=N975F
