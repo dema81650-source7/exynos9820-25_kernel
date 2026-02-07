@@ -20,62 +20,59 @@ jobs:
 
       - name: Configure Git Identity
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "GitHub Actions"
+          git config --global user.email "bot@github.com"
+          git config --global user.name "GitHub-Actions"
 
-      - name: Surgical Patch (Fixing Git and Disabling Magisk)
+      - name: Ultimate Surgical Patch
         run: |
-          # This Python script will physically remove the Magisk calls and fix the Git error
+          # This Python script injects the missing 'version' and fixes syntax errors
           python3 -c "
           import sys
           import re
-          lines = []
-          skip_mode = False
           
           try:
               with open('cruelbuild', 'r') as f:
-                  for line in f:
-                      # 1. Fix the Git Branch Detection (Indentation safe)
-                      if 'branch = run' in line and 'splitlines()[1]' in line:
-                          indent = line[:line.find('branch')]
-                          lines.append(f'{indent}branch = \"cruel\"\n')
-                          skip_mode = True
-                          continue
-                      
-                      # Stop skipping after finishing the branch logic
-                      if skip_mode and 'splitlines()' in line:
-                          skip_mode = False
-                          continue
-                      
-                      if skip_mode:
-                          continue
+                  lines = f.readlines()
+              
+              new_lines = []
+              # Inject 'version' definition at the very top to prevent NameError
+              new_lines.append(\"version = '26.1'\\n\")
+              
+              skip_git_logic = False
+              for line in lines:
+                  # 1. Fix Branch Detection with correct indentation
+                  if 'branch = run([' in line:
+                      indent = line[:line.find('branch')]
+                      new_lines.append(f'{indent}branch = \"cruel\"\\n')
+                      skip_git_logic = True
+                      continue
+                  
+                  if skip_git_logic:
+                      if 'splitlines()[1]' in line:
+                          skip_git_logic = False
+                      continue
 
-                      # 2. Disable Magisk functions by commenting them out
-                      if 'update_magisk(' in line:
-                          lines.append(f'# {line}') # Comment out the Magisk call
-                          continue
-                      
-                      lines.append(line)
+                  # 2. Disable Magisk function calls
+                  if 'update_magisk(' in line:
+                      new_lines.append(line.replace('update_magisk(', '# update_magisk('))
+                      continue
+                  
+                  new_lines.append(line)
               
               with open('cruelbuild', 'w') as f:
-                  f.writelines(lines)
-              print('Successfully removed Magisk calls and fixed Git logic.')
+                  f.writelines(new_lines)
+              print('Applied Ultimate Patch: Version fixed, Git fixed, Magisk disabled.')
           except Exception as e:
-              print(f'Patch Error: {e}')
+              print(f'Critical Patch Error: {e}')
               sys.exit(1)
           "
-
-      - name: Clean Environment
-        run: |
-          # Ensure no Magisk folders exist to confuse the script
-          rm -rf usr/magisk/
 
       - name: Configure and Build Kernel
         run: |
           chmod +x cruelbuild
           mkdir -p out
           
-          # Use standard configuration without Magisk
+          # Running the config with no Magisk dependency
           ./cruelbuild config \
             model=N975F \
             toolchain=proton \
@@ -105,5 +102,5 @@ jobs:
       - name: Upload Finished Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cruel-Kernel-Note10Plus-Final
+          name: Cruel-Kernel-Note10Plus-Fixed
           path: out/*.zip
