@@ -7,19 +7,24 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
         with:
           ref: cruel
           fetch-depth: 0
 
-      - name: Setup Environment
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
+          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Smart Patch for CruelBuild
+      - name: Configure Git Identity
         run: |
-          # Use Python to fix both the Git Branch syntax and Indentation automatically
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Advanced Python Patching
+        run: |
           python3 -c "
           import sys
           import re
@@ -29,16 +34,15 @@ jobs:
           try:
               with open('cruelbuild', 'r') as f:
                   for line in f:
-                      # 1. Match the line and capture its exact indentation
+                      # Fix the Git Branch check (IndexError & SyntaxError fix)
                       match = re.match(r'^(\s*)branch = run\(', line)
                       if match:
                           indent = match.group(1)
                           skip_mode = True
-                          # Replace with fixed branch and exact same indentation
                           lines.append(f'{indent}branch = \"cruel\"\n')
                           continue
                       
-                      # 2. Skip the rest of the multi-line command
+                      # Stop skipping when we reach the end of that multi-line command
                       if skip_mode:
                           if 'splitlines()[1]' in line:
                               skip_mode = False
@@ -48,27 +52,29 @@ jobs:
               
               with open('cruelbuild', 'w') as f:
                   f.writelines(lines)
-              print('Successfully patched indentation and syntax.')
+              print('Patch applied successfully.')
           except Exception as e:
-              print(f'Error: {e}')
+              print(f'Patching error: {e}')
               sys.exit(1)
           "
 
-      - name: Fix Magisk and Version Dependencies
+      - name: Prepare Magisk Environment
         run: |
-          # Create the directory and the missing version file to stop FileNotFoundError
           mkdir -p usr/magisk/
           echo "26.1" > usr/magisk/magisk_version
-          
-          # Create the dummy update script
           echo "#!/bin/sh" > usr/magisk/update_magisk.sh
           echo "exit 0" >> usr/magisk/update_magisk.sh
           chmod +x usr/magisk/update_magisk.sh
+          # Create dummy zip if script checks for it
+          touch usr/magisk/Magisk.zip
 
-      - name: Configure and Build
+      - name: Configure and Build Kernel
         run: |
           chmod +x cruelbuild
+          # Ensure output directory exists
+          mkdir -p out
           
+          # Run configuration
           ./cruelbuild config \
             model=N975F \
             toolchain=proton \
@@ -93,9 +99,10 @@ jobs:
             +fp_boost \
             +1000hz
           
+          # Build the image
           ./cruelbuild mkimg model=N975F
 
-      - name: Upload Kernel
+      - name: Upload Finished Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Cruel-Kernel-Note10Plus
