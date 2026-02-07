@@ -23,8 +23,9 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
 
-      - name: Advanced Python Patching
+      - name: Patch Branch Detection logic
         run: |
+          # Fixing the Git branch error that caused IndexError earlier
           python3 -c "
           import sys
           import re
@@ -34,7 +35,6 @@ jobs:
           try:
               with open('cruelbuild', 'r') as f:
                   for line in f:
-                      # Fix the Git Branch check (IndexError & SyntaxError fix)
                       match = re.match(r'^(\s*)branch = run\(', line)
                       if match:
                           indent = match.group(1)
@@ -42,7 +42,6 @@ jobs:
                           lines.append(f'{indent}branch = \"cruel\"\n')
                           continue
                       
-                      # Stop skipping when we reach the end of that multi-line command
                       if skip_mode:
                           if 'splitlines()[1]' in line:
                               skip_mode = False
@@ -52,33 +51,23 @@ jobs:
               
               with open('cruelbuild', 'w') as f:
                   f.writelines(lines)
-              print('Patch applied successfully.')
+              print('Core script patched successfully.')
           except Exception as e:
-              print(f'Patching error: {e}')
+              print(f'Error: {e}')
               sys.exit(1)
           "
-
-      - name: Prepare Magisk Environment
-        run: |
-          mkdir -p usr/magisk/
-          echo "26.1" > usr/magisk/magisk_version
-          echo "#!/bin/sh" > usr/magisk/update_magisk.sh
-          echo "exit 0" >> usr/magisk/update_magisk.sh
-          chmod +x usr/magisk/update_magisk.sh
-          # Create dummy zip if script checks for it
-          touch usr/magisk/Magisk.zip
 
       - name: Configure and Build Kernel
         run: |
           chmod +x cruelbuild
-          # Ensure output directory exists
           mkdir -p out
           
-          # Run configuration
+          # Added '-magisk' to explicitly disable Magisk integration
           ./cruelbuild config \
             model=N975F \
             toolchain=proton \
             name="Cruel-Hunter-Elite-120FPS" \
+            -magisk \
             +wireguard \
             +ttl \
             +nohardening \
@@ -99,11 +88,10 @@ jobs:
             +fp_boost \
             +1000hz
           
-          # Build the image
           ./cruelbuild mkimg model=N975F
 
       - name: Upload Finished Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cruel-Kernel-Note10Plus
+          name: Cruel-Kernel-Note10Plus-NoMagisk
           path: out/*.zip
