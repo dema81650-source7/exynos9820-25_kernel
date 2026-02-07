@@ -17,11 +17,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
           
-          # Delete the troublesome lines and force branch name correctly
-          sed -i '585,586d' cruelbuild
-          sed -i '584a\    branch = "cruel"' cruelbuild
+          # Fix Git identity
+          git config --global user.email "bot@example.com"
+          git config --global user.name "KernelBot"
           
-          # Skip the Magisk update that causes status 11
+          # Bypass Magisk update crash
           mkdir -p usr/magisk/
           echo "#!/bin/sh" > usr/magisk/update_magisk.sh
           echo "exit 0" >> usr/magisk/update_magisk.sh
@@ -30,6 +30,9 @@ jobs:
       - name: Configure and Build
         run: |
           chmod +x cruelbuild
+          # We use "git checkout -B" to ensure the branch is recognized by the script
+          git checkout -B cruel
+          
           ./cruelbuild config \
             model=N975F \
             toolchain=proton \
