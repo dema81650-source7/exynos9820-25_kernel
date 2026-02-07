@@ -1,19 +1,42 @@
-name: Build
+name: Build Cruel Kernel Note10+ Ultimate
 
-on: [push]
+on:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v2
 
-      - name: env setup
-        run: sudo apt-get update --fix-missing && sudo apt-get install bc bison build-essential zstd clang flex gnupg gperf ccache liblz4-tool libncurses5-dev libsdl1.2-dev libstdc++6 libxml2 libxml2-utils lzop pngcrush schedtool squashfs-tools xsltproc zlib1g-dev libncurses5-dev bzip2 git gcc g++ libssl-dev openssl python3 -y && sudo apt-get install gcc-aarch64-linux-gnu && sudo apt-get install gcc-arm-linux-gnueabihf&& sudo apt-get install lld&& sudo apt-get install gcc-arm-linux-gnueabi
-        
-      - name: build
-        env:
-          token: ${{ secrets.TOKEN }}
-        run: chmod +x build.sh && ./build.sh "${token}"
+      - name: Setup Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev
 
+      - name: Configure and Build
+        run: |
+          ./cruelbuild config \
+            model=N975F \
+            name="Cruel-Hunter-Elite-120FPS" \
+            +magisk \
+            +wireguard \
+            +ttl \
+            +nohardening \
+            +nodebug \
+            +ntfs \
+            +sdfat \
+            +cifs \
+            +morosound \
+            +boeffla_wl_blocker \
+            +force_dex_wqhd \
+            +usb_serial \
+            empty_vbmeta \
+            performance \
+            simple_lmk \
+            tcp_bbr \
+            tcp_westwood \
+            io_zen \
+            fp_boost \
+            750hz
+          ./cruelbuild mkimg
