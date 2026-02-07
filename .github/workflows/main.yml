@@ -17,27 +17,37 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
 
-      - name: Patch Build Script (Fix SyntaxError)
+      - name: Smart Patch for CruelBuild
         run: |
-          # Use Python to surgically replace the problematic line
-          # This avoids 'sed' issues with unmatched parentheses
+          # Use Python to surgically remove the multi-line branch check
           python3 -c "
           import sys
           lines = []
+          skip_mode = False
+          
           try:
               with open('cruelbuild', 'r') as f:
                   for line in f:
-                      # Find the line causing the issue (git branch check)
-                      if 'branch =' in line and 'run([' in line:
-                          # Replace it with a hardcoded string, keeping indentation
+                      # 1. Detect the start of the problematic branch check
+                      if 'branch = run([' in line:
+                          skip_mode = True
+                          # Inject the fixed branch name
                           lines.append('    branch = \"cruel\"\n')
-                      else:
-                          lines.append(line)
+                      
+                      # 2. While in skip mode, look for the end of the multi-line command
+                      if skip_mode:
+                          if 'splitlines()[1]' in line:
+                              skip_mode = False
+                          continue
+                      
+                      # 3. Keep all other lines as is
+                      lines.append(line)
               
-              # Write the fixed file back
+              # Write the patched script
               with open('cruelbuild', 'w') as f:
                   f.writelines(lines)
-              print('Successfully patched cruelbuild script.')
+              print('Successfully patched multi-line error in cruelbuild!')
+              
           except Exception as e:
               print(f'Error patching file: {e}')
               sys.exit(1)
@@ -45,7 +55,6 @@ jobs:
 
       - name: Fix Magisk Dependency
         run: |
-          # Create dummy magisk script to prevent exit status 11
           mkdir -p usr/magisk/
           echo "#!/bin/sh" > usr/magisk/update_magisk.sh
           echo "exit 0" >> usr/magisk/update_magisk.sh
