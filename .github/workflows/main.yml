@@ -23,9 +23,9 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "GitHub Actions"
 
-      - name: Patch Branch Detection logic
+      - name: Surgical Patch (Fixing Git and Disabling Magisk)
         run: |
-          # Fixing the Git branch error that caused IndexError earlier
+          # This Python script will physically remove the Magisk calls and fix the Git error
           python3 -c "
           import sys
           import re
@@ -35,39 +35,51 @@ jobs:
           try:
               with open('cruelbuild', 'r') as f:
                   for line in f:
-                      match = re.match(r'^(\s*)branch = run\(', line)
-                      if match:
-                          indent = match.group(1)
-                          skip_mode = True
+                      # 1. Fix the Git Branch Detection (Indentation safe)
+                      if 'branch = run' in line and 'splitlines()[1]' in line:
+                          indent = line[:line.find('branch')]
                           lines.append(f'{indent}branch = \"cruel\"\n')
+                          skip_mode = True
+                          continue
+                      
+                      # Stop skipping after finishing the branch logic
+                      if skip_mode and 'splitlines()' in line:
+                          skip_mode = False
                           continue
                       
                       if skip_mode:
-                          if 'splitlines()[1]' in line:
-                              skip_mode = False
+                          continue
+
+                      # 2. Disable Magisk functions by commenting them out
+                      if 'update_magisk(' in line:
+                          lines.append(f'# {line}') # Comment out the Magisk call
                           continue
                       
                       lines.append(line)
               
               with open('cruelbuild', 'w') as f:
                   f.writelines(lines)
-              print('Core script patched successfully.')
+              print('Successfully removed Magisk calls and fixed Git logic.')
           except Exception as e:
-              print(f'Error: {e}')
+              print(f'Patch Error: {e}')
               sys.exit(1)
           "
+
+      - name: Clean Environment
+        run: |
+          # Ensure no Magisk folders exist to confuse the script
+          rm -rf usr/magisk/
 
       - name: Configure and Build Kernel
         run: |
           chmod +x cruelbuild
           mkdir -p out
           
-          # Added '-magisk' to explicitly disable Magisk integration
+          # Use standard configuration without Magisk
           ./cruelbuild config \
             model=N975F \
             toolchain=proton \
             name="Cruel-Hunter-Elite-120FPS" \
-            -magisk \
             +wireguard \
             +ttl \
             +nohardening \
@@ -93,5 +105,5 @@ jobs:
       - name: Upload Finished Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cruel-Kernel-Note10Plus-NoMagisk
+          name: Cruel-Kernel-Note10Plus-Final
           path: out/*.zip
