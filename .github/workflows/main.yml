@@ -24,7 +24,7 @@ jobs:
           chmod +x cruelbuild
           ./cruelbuild config \
             model=N975F \
-            toolchain=gcc \
+            toolchain=proton \
             name="Cruel-Hunter-Elite-120FPS" \
             +magisk \
             +wireguard \
