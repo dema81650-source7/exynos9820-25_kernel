@@ -19,7 +19,7 @@ jobs:
 
       - name: Smart Patch for CruelBuild
         run: |
-          # Python script to fix indentation and remove multi-line code
+          # Use Python to fix both the Git Branch syntax and Indentation automatically
           python3 -c "
           import sys
           import re
@@ -29,36 +29,38 @@ jobs:
           try:
               with open('cruelbuild', 'r') as f:
                   for line in f:
-                      # 1. Detect the line and capture its leading whitespace
+                      # 1. Match the line and capture its exact indentation
                       match = re.match(r'^(\s*)branch = run\(', line)
                       if match:
-                          indent = match.group(1) # Get the exact spaces used
+                          indent = match.group(1)
                           skip_mode = True
-                          # Inject the fix with exact same indentation
+                          # Replace with fixed branch and exact same indentation
                           lines.append(f'{indent}branch = \"cruel\"\n')
                           continue
                       
-                      # 2. While skipping, look for the closing part of the command
+                      # 2. Skip the rest of the multi-line command
                       if skip_mode:
                           if 'splitlines()[1]' in line:
                               skip_mode = False
                           continue
                       
-                      # 3. Add regular lines
                       lines.append(line)
               
               with open('cruelbuild', 'w') as f:
                   f.writelines(lines)
-              print('Successfully patched with correct indentation!')
-              
+              print('Successfully patched indentation and syntax.')
           except Exception as e:
               print(f'Error: {e}')
               sys.exit(1)
           "
 
-      - name: Fix Magisk Dependency
+      - name: Fix Magisk and Version Dependencies
         run: |
+          # Create the directory and the missing version file to stop FileNotFoundError
           mkdir -p usr/magisk/
+          echo "26.1" > usr/magisk/magisk_version
+          
+          # Create the dummy update script
           echo "#!/bin/sh" > usr/magisk/update_magisk.sh
           echo "exit 0" >> usr/magisk/update_magisk.sh
           chmod +x usr/magisk/update_magisk.sh
