@@ -16,13 +16,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip
-          
-          # Root fix: Disable the line that triggers IndexError and set branch manually
-          # This replaces line 585 with a hardcoded value that the script can't ignore
-          sed -i '585s|^|#|' cruelbuild
-          sed -i '585a\    branch = "cruel"' cruelbuild
-          
-          # Fix Magisk crash (exit status 11)
+
+      - name: Patch Build Script (Fix SyntaxError)
+        run: |
+          # Use Python to surgically replace the problematic line
+          # This avoids 'sed' issues with unmatched parentheses
+          python3 -c "
+          import sys
+          lines = []
+          try:
+              with open('cruelbuild', 'r') as f:
+                  for line in f:
+                      # Find the line causing the issue (git branch check)
+                      if 'branch =' in line and 'run([' in line:
+                          # Replace it with a hardcoded string, keeping indentation
+                          lines.append('    branch = \"cruel\"\n')
+                      else:
+                          lines.append(line)
+              
+              # Write the fixed file back
+              with open('cruelbuild', 'w') as f:
+                  f.writelines(lines)
+              print('Successfully patched cruelbuild script.')
+          except Exception as e:
+              print(f'Error patching file: {e}')
+              sys.exit(1)
+          "
+
+      - name: Fix Magisk Dependency
+        run: |
+          # Create dummy magisk script to prevent exit status 11
           mkdir -p usr/magisk/
           echo "#!/bin/sh" > usr/magisk/update_magisk.sh
           echo "exit 0" >> usr/magisk/update_magisk.sh
@@ -31,6 +54,7 @@ jobs:
       - name: Configure and Build
         run: |
           chmod +x cruelbuild
+          
           ./cruelbuild config \
             model=N975F \
             toolchain=proton \
