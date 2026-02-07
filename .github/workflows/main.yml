@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: cruel
 
       - name: Setup Environment
         run: |
@@ -16,6 +18,7 @@ jobs:
 
       - name: Configure and Build
         run: |
+          chmod +x cruelbuild
           ./cruelbuild config \
             model=N975F \
             name="Cruel-Hunter-Elite-120FPS" \
