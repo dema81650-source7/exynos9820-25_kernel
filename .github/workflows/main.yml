@@ -19,37 +19,40 @@ jobs:
 
       - name: Smart Patch for CruelBuild
         run: |
-          # Use Python to surgically remove the multi-line branch check
+          # Python script to fix indentation and remove multi-line code
           python3 -c "
           import sys
+          import re
           lines = []
           skip_mode = False
           
           try:
               with open('cruelbuild', 'r') as f:
                   for line in f:
-                      # 1. Detect the start of the problematic branch check
-                      if 'branch = run([' in line:
+                      # 1. Detect the line and capture its leading whitespace
+                      match = re.match(r'^(\s*)branch = run\(', line)
+                      if match:
+                          indent = match.group(1) # Get the exact spaces used
                           skip_mode = True
-                          # Inject the fixed branch name
-                          lines.append('    branch = \"cruel\"\n')
+                          # Inject the fix with exact same indentation
+                          lines.append(f'{indent}branch = \"cruel\"\n')
+                          continue
                       
-                      # 2. While in skip mode, look for the end of the multi-line command
+                      # 2. While skipping, look for the closing part of the command
                       if skip_mode:
                           if 'splitlines()[1]' in line:
                               skip_mode = False
                           continue
                       
-                      # 3. Keep all other lines as is
+                      # 3. Add regular lines
                       lines.append(line)
               
-              # Write the patched script
               with open('cruelbuild', 'w') as f:
                   f.writelines(lines)
-              print('Successfully patched multi-line error in cruelbuild!')
+              print('Successfully patched with correct indentation!')
               
           except Exception as e:
-              print(f'Error patching file: {e}')
+              print(f'Error: {e}')
               sys.exit(1)
           "
 
