@@ -15,7 +15,7 @@ jobs:
       - name: Setup Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3
+          sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip lib32z1
           git config --global user.email "bot@example.com"
           git config --global user.name "KernelBot"
           git checkout cruel
@@ -28,7 +28,7 @@ jobs:
             model=N975F \
             toolchain=proton \
             name="Cruel-Hunter-Elite-120FPS" \
-            +magisk=canary \
+            +magisk=26.4 \
             +wireguard \
             +ttl \
             +nohardening \
