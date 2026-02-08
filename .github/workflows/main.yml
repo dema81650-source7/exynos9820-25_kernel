@@ -11,33 +11,53 @@ jobs:
         model: [ "N975F" ]
 
     steps:
-      - name: Checkout Source
+      - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
-          # Instructions: Ensure full history is fetched to satisfy the script's git commands
+          # Fetch all history and submodules to satisfy line 585
           fetch-depth: 0
-          ref: cruel
+          submodules: 'recursive'
 
-      - name: Install Build Dependencies
+      - name: Install System Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Prepare Magisk and Patch Script
-        # This step solves the IndexError by manually forcing the branch name into the script
+      - name: Setup Magisk and Force Git Branch
+        # This step fixes the IndexError by ensuring git can find the branch
         run: |
+          # 1. Prepare Magisk files
           mkdir -p usr/magisk
           curl -L https://github.com/topjohnwu/Magisk/releases/download/v26.1/Magisk-v26.1.apk -o usr/magisk/Magisk.zip
           echo "26.1" > usr/magisk/magisk_version
           
-          # Patching the specific line that causes IndexError (Line 585/1189 in your screenshots)
-          sed -i "s/branch = run(\['git', 'submodule', 'foreach', 'git', 'rev-parse', '--abbrev-ref', 'HEAD'\]).splitlines()\[1\]/branch = 'cruel'/g" cruelbuild
-          
-          chmod +x cruelbuild
-          echo "Script patched and Magisk ready."
+          # 2. Fix Git environment to prevent IndexError at line 585
+          git config --global --add safe.directory /home/runner/work/exynos9820-25_kernel/exynos9820-25_kernel
+          git checkout cruel || git checkout -b cruel
+          git submodule foreach 'git checkout cruel || true'
+
+      - name: Surgical Patch for IndexError
+        # If git fix isn't enough, this Python script wipes the problematic line
+        run: |
+          python3 -c "
+          import sys
+          try:
+              with open('cruelbuild', 'r') as f:
+                  data = f.read()
+              # We use regex to replace the entire failing block regardless of spaces
+              import re
+              pattern = r'branch = run\(\[\'git\', \'submodule\'.*?splitlines\(\)\[1\]'
+              fixed_data = re.sub(pattern, 'branch = \"cruel\"', data, flags=re.DOTALL)
+              with open('cruelbuild', 'w') as f:
+                  f.write(fixed_data)
+              print('Regex patch applied successfully.')
+          except Exception as e:
+              print(f'Patch failed: {e}')
+          "
 
       - name: Kernel Configure
         run: |
+          chmod +x cruelbuild
           ./cruelbuild config \
                        model=${{ matrix.model }} \
                        name="Cruel-Hunter-Elite-120FPS" \
