@@ -1,97 +1,70 @@
-name: Build Cruel Kernel Note10Plus
+name: Build Cruel Kernel Note10Plus Ultimate
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Based on developer instructions: Setting the model for Note10+
+        model: [ "N975F" ]
+
     steps:
-      - name: Checkout Source Code
+      - name: Checkout Source
         uses: actions/checkout@v4
         with:
           ref: cruel
           fetch-depth: 0
 
-      - name: Install Build Tools
+      - name: Install Build Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Create Dependency Structure
+      - name: Setup Magisk Requirement
+        # The developer mentions +magisk, so we ensure the directory exists
         run: |
           mkdir -p usr/magisk
           echo "26.1" > usr/magisk/magisk_version
           touch usr/magisk/update_magisk.sh
           chmod +x usr/magisk/update_magisk.sh
 
-      - name: Force Patch Script Logic
-        # This Python script will physically rewrite the problematic lines
+      - name: Kernel Configure
+        # This section is copied and optimized from the developer's guide you provided
         run: |
-          python3 -c "
-          import sys
-          try:
-              with open('cruelbuild', 'r') as f:
-                  lines = f.readlines()
-              
-              new_lines = []
-              for line in lines:
-                  # Force define branch and version to stop IndexError and NameError
-                  if 'import os' in line:
-                      new_lines.append(line)
-                      new_lines.append('version = \"26.1\"\n')
-                      new_lines.append('branch = \"cruel\"\n')
-                      continue
-                  
-                  # Comment out the failing git command line
-                  if 'branch = run([' in line:
-                      new_lines.append(f'    # {line}')
-                      continue
-                  if 'splitlines()[1]' in line:
-                      new_lines.append(f'    # {line}')
-                      continue
-                      
-                  new_lines.append(line)
-              
-              with open('cruelbuild', 'w') as f:
-                  f.writelines(new_lines)
-              print('Successfully forced branch=cruel and version=26.1')
-          except Exception as e:
-              print(f'Error during patching: {e}')
-              sys.exit(1)
-          "
+          chmod +x cruelbuild
+          ./cruelbuild config \
+                       model=${{ matrix.model }} \
+                       name="Cruel-Hunter-Elite-120FPS" \
+                       +magisk \
+                       +wireguard \
+                       +ttl \
+                       +nohardening \
+                       +nodebug \
+                       +ntfs \
+                       +sdfat \
+                       +cifs \
+                       +morosound \
+                       +boeffla_wl_blocker \
+                       +force_dex_wqhd \
+                       +usb_serial \
+                       +empty_vbmeta \
+                       +performance \
+                       +simple_lmk \
+                       +tcp_bbr \
+                       +tcp_westwood \
+                       +io_zen \
+                       +fp_boost \
+                       +1000hz
 
-      - name: Compile Kernel
+      - name: Build Kernel Image
         run: |
-          mkdir -p out
-          python3 cruelbuild config \
-            model=N975F \
-            toolchain=proton \
-            name="Cruel-Hunter-Elite-120FPS" \
-            +wireguard \
-            +ttl \
-            +nohardening \
-            +nodebug \
-            +ntfs \
-            +sdfat \
-            +cifs \
-            +morosound \
-            +boeffla_wl_blocker \
-            +force_dex_wqhd \
-            +usb_serial \
-            +empty_vbmeta \
-            +performance \
-            +simple_lmk \
-            +tcp_bbr \
-            +tcp_westwood \
-            +io_zen \
-            +fp_boost \
-            +1000hz
-          
-          python3 cruelbuild mkimg model=N975F
+          ./cruelbuild mkimg model=${{ matrix.model }}
 
-      - name: Upload Output
+      - name: Upload Kernel Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cruel-Kernel-Result
+          name: Cruel-Kernel-${{ matrix.model }}
           path: out/*.zip
