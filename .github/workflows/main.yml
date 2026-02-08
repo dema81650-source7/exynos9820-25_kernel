@@ -23,39 +23,47 @@ jobs:
           git config --global user.email "bot@github.com"
           git config --global user.name "GitHub-Actions"
 
-      - name: Surgical Code Repair
+      - name: Deep Source Code Repair (Safe Injection)
         run: |
-          # This Python script fixes the source code of cruelbuild properly
           python3 -c "
           import sys
           import re
-          
+
           try:
               with open('cruelbuild', 'r') as f:
-                  content = f.read()
-              
-              # 1. Fix Branch IndexError (Hardcode it)
+                  lines = f.readlines()
+
+              new_lines = []
+              # Inject global variables at the top after imports
+              injected = False
+              for line in lines:
+                  new_lines.append(line)
+                  if 'import os' in line and not injected:
+                      new_lines.append('version = \"26.1\"\n')
+                      new_lines.append('branch = \"cruel\"\n')
+                      injected = True
+
+              content = ''.join(new_lines)
+
+              # 1. Fix Git Branch Detection: Replace the failing run() logic with hardcoded branch
               content = re.sub(r'branch\s*=\s*run\(\[.*?splitlines\(\)\[1\]', 'branch = \"cruel\"', content, flags=re.DOTALL)
-              
-              # 2. Fix NameError: version (Define it at module level)
-              # We find the first import and inject version right after it
-              content = content.replace('import os', 'import os\nversion = \"26.1\"')
-              
-              # 3. Disable Magisk functions to prevent exit status errors
-              content = content.replace('update_magisk(', '# update_magisk(')
-              
+
+              # 2. Fix Magisk Function: Make it do nothing (pass) instead of commenting it out
+              # This prevents SyntaxError: invalid syntax
+              content = re.sub(r'def\s+update_magisk\(.*?\):.*?run\(cmd', 'def update_magisk(version):\n    pass\n    # run(cmd', content, flags=re.DOTALL)
+
               with open('cruelbuild', 'w') as f:
                   f.write(content)
-              print('Source code repaired successfully.')
+              print('Deep repair completed successfully.')
           except Exception as e:
-              print(f'Repair Failed: {e}')
+              print(f'Critical Repair Error: {e}')
               sys.exit(1)
           "
 
       - name: Configure and Build Kernel
         run: |
           mkdir -p out
-          # Using python3 explicitly to avoid shell execution errors
+          # Execute with Python3 directly for maximum stability
           python3 cruelbuild config \
             model=N975F \
             toolchain=proton \
@@ -85,5 +93,5 @@ jobs:
       - name: Upload Finished Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cruel-Kernel-Note10Plus-Final
+          name: Cruel-Kernel-Note10Plus-Ultimate
           path: out/*.zip
