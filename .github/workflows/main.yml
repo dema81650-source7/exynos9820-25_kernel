@@ -14,28 +14,30 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
         with:
-          ref: cruel
+          # Instructions: Ensure full history is fetched to satisfy the script's git commands
           fetch-depth: 0
+          ref: cruel
 
       - name: Install Build Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Download and Setup Magisk Assets
-        # We download and create all possible Magisk filenames to avoid any FileNotFoundError
+      - name: Prepare Magisk and Patch Script
+        # This step solves the IndexError by manually forcing the branch name into the script
         run: |
           mkdir -p usr/magisk
-          curl -L https://github.com/topjohnwu/Magisk/releases/download/v26.1/Magisk-v26.1.apk -o usr/magisk/Magisk-v26.1.apk
-          cp usr/magisk/Magisk-v26.1.apk usr/magisk/Magisk.zip
+          curl -L https://github.com/topjohnwu/Magisk/releases/download/v26.1/Magisk-v26.1.apk -o usr/magisk/Magisk.zip
           echo "26.1" > usr/magisk/magisk_version
-          touch usr/magisk/update_magisk.sh
-          chmod +x usr/magisk/update_magisk.sh
-          echo "Magisk assets prepared successfully."
+          
+          # Patching the specific line that causes IndexError (Line 585/1189 in your screenshots)
+          sed -i "s/branch = run(\['git', 'submodule', 'foreach', 'git', 'rev-parse', '--abbrev-ref', 'HEAD'\]).splitlines()\[1\]/branch = 'cruel'/g" cruelbuild
+          
+          chmod +x cruelbuild
+          echo "Script patched and Magisk ready."
 
       - name: Kernel Configure
         run: |
-          chmod +x cruelbuild
           ./cruelbuild config \
                        model=${{ matrix.model }} \
                        name="Cruel-Hunter-Elite-120FPS" \
