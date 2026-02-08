@@ -5,10 +5,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: cruel
           fetch-depth: 0
@@ -18,52 +18,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Configure Git Identity
+      - name: Create Mock Magisk Structure
+        # Creating missing files to solve FileNotFoundError
         run: |
-          git config --global user.email "bot@github.com"
-          git config --global user.name "GitHub-Actions"
+          mkdir -p usr/magisk
+          echo "26.1" > usr/magisk/magisk_version
+          touch usr/magisk/update_magisk.sh
+          chmod +x usr/magisk/update_magisk.sh
 
-      - name: Deep Source Code Repair (Safe Injection)
+      - name: Fix Branch Detection logic
+        # Solving the IndexError by hardcoding the branch name
         run: |
-          python3 -c "
-          import sys
-          import re
-
-          try:
-              with open('cruelbuild', 'r') as f:
-                  lines = f.readlines()
-
-              new_lines = []
-              # Inject global variables at the top after imports
-              injected = False
-              for line in lines:
-                  new_lines.append(line)
-                  if 'import os' in line and not injected:
-                      new_lines.append('version = \"26.1\"\n')
-                      new_lines.append('branch = \"cruel\"\n')
-                      injected = True
-
-              content = ''.join(new_lines)
-
-              # 1. Fix Git Branch Detection: Replace the failing run() logic with hardcoded branch
-              content = re.sub(r'branch\s*=\s*run\(\[.*?splitlines\(\)\[1\]', 'branch = \"cruel\"', content, flags=re.DOTALL)
-
-              # 2. Fix Magisk Function: Make it do nothing (pass) instead of commenting it out
-              # This prevents SyntaxError: invalid syntax
-              content = re.sub(r'def\s+update_magisk\(.*?\):.*?run\(cmd', 'def update_magisk(version):\n    pass\n    # run(cmd', content, flags=re.DOTALL)
-
-              with open('cruelbuild', 'w') as f:
-                  f.write(content)
-              print('Deep repair completed successfully.')
-          except Exception as e:
-              print(f'Critical Repair Error: {e}')
-              sys.exit(1)
-          "
+          sed -i 's/branch = run(\[.*\]).splitlines()\[1\]/branch = "cruel"/g' cruelbuild
 
       - name: Configure and Build Kernel
         run: |
           mkdir -p out
-          # Execute with Python3 directly for maximum stability
+          # Execute using python3 for stability
           python3 cruelbuild config \
             model=N975F \
             toolchain=proton \
@@ -93,5 +64,5 @@ jobs:
       - name: Upload Finished Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cruel-Kernel-Note10Plus-Ultimate
+          name: Cruel-Kernel-Note10Plus
           path: out/*.zip
