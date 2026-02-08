@@ -18,19 +18,48 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Create Missing Dependencies
-        # Fix for FileNotFoundError: usr/magisk/magisk_version
+      - name: Create Dependency Structure
         run: |
           mkdir -p usr/magisk
           echo "26.1" > usr/magisk/magisk_version
           touch usr/magisk/update_magisk.sh
           chmod +x usr/magisk/update_magisk.sh
 
-      - name: Patch Script Logic
-        # Fix for IndexError: list index out of range
+      - name: Force Patch Script Logic
+        # This Python script will physically rewrite the problematic lines
         run: |
-          sed -i 's/branch = run(\[.*\]).splitlines()\[1\]/branch = "cruel"/g' cruelbuild
-          sed -i 's/if version:/if True:/g' cruelbuild
+          python3 -c "
+          import sys
+          try:
+              with open('cruelbuild', 'r') as f:
+                  lines = f.readlines()
+              
+              new_lines = []
+              for line in lines:
+                  # Force define branch and version to stop IndexError and NameError
+                  if 'import os' in line:
+                      new_lines.append(line)
+                      new_lines.append('version = \"26.1\"\n')
+                      new_lines.append('branch = \"cruel\"\n')
+                      continue
+                  
+                  # Comment out the failing git command line
+                  if 'branch = run([' in line:
+                      new_lines.append(f'    # {line}')
+                      continue
+                  if 'splitlines()[1]' in line:
+                      new_lines.append(f'    # {line}')
+                      continue
+                      
+                  new_lines.append(line)
+              
+              with open('cruelbuild', 'w') as f:
+                  f.writelines(new_lines)
+              print('Successfully forced branch=cruel and version=26.1')
+          except Exception as e:
+              print(f'Error during patching: {e}')
+              sys.exit(1)
+          "
 
       - name: Compile Kernel
         run: |
