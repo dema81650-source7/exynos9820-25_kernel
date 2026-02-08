@@ -1,4 +1,4 @@
-name: Build Cruel Kernel Note10+ Ultimate
+name: Build Cruel Kernel Note10Plus
 
 on:
   workflow_dispatch:
@@ -7,34 +7,34 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout Code
+      - name: Checkout Source Code
         uses: actions/checkout@v4
         with:
           ref: cruel
           fetch-depth: 0
 
-      - name: Install System Dependencies
+      - name: Install Build Tools
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Create Mock Magisk Structure
-        # Creating missing files to solve FileNotFoundError
+      - name: Create Missing Dependencies
+        # Fix for FileNotFoundError: usr/magisk/magisk_version
         run: |
           mkdir -p usr/magisk
           echo "26.1" > usr/magisk/magisk_version
           touch usr/magisk/update_magisk.sh
           chmod +x usr/magisk/update_magisk.sh
 
-      - name: Fix Branch Detection logic
-        # Solving the IndexError by hardcoding the branch name
+      - name: Patch Script Logic
+        # Fix for IndexError: list index out of range
         run: |
           sed -i 's/branch = run(\[.*\]).splitlines()\[1\]/branch = "cruel"/g' cruelbuild
+          sed -i 's/if version:/if True:/g' cruelbuild
 
-      - name: Configure and Build Kernel
+      - name: Compile Kernel
         run: |
           mkdir -p out
-          # Execute using python3 for stability
           python3 cruelbuild config \
             model=N975F \
             toolchain=proton \
@@ -61,8 +61,8 @@ jobs:
           
           python3 cruelbuild mkimg model=N975F
 
-      - name: Upload Finished Artifact
+      - name: Upload Output
         uses: actions/upload-artifact@v4
         with:
-          name: Cruel-Kernel-Note10Plus
+          name: Cruel-Kernel-Result
           path: out/*.zip
