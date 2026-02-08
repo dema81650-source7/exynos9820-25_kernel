@@ -1,4 +1,4 @@
-name: Build Cruel Kernel Note10Plus Ultimate
+name: Build Cruel Kernel Note10Plus
 
 on:
   workflow_dispatch:
@@ -6,87 +6,60 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Exactly as the developer instructed
     strategy:
       matrix:
         model: [ "N975F" ]
 
     steps:
-      - name: Checkout Source Code
+      - name: Checkout Source
         uses: actions/checkout@v4
         with:
-          # Fetch all history and submodules to satisfy line 585
+          # Important: fetch-depth 0 is required for the script's git logic
           fetch-depth: 0
-          submodules: 'recursive'
+          submodules: recursive
 
-      - name: Install System Dependencies
+      - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libncurses-dev bc bison flex libssl-dev libelf-dev android-tools-adb git python3 curl wget unzip re2c
 
-      - name: Setup Magisk and Force Git Branch
-        # This step fixes the IndexError by ensuring git can find the branch
+      - name: Create Developer Environment
+        # This step creates the files the developer's script expects to find
         run: |
-          # 1. Prepare Magisk files
           mkdir -p usr/magisk
           curl -L https://github.com/topjohnwu/Magisk/releases/download/v26.1/Magisk-v26.1.apk -o usr/magisk/Magisk.zip
           echo "26.1" > usr/magisk/magisk_version
           
-          # 2. Fix Git environment to prevent IndexError at line 585
-          git config --global --add safe.directory /home/runner/work/exynos9820-25_kernel/exynos9820-25_kernel
-          git checkout cruel || git checkout -b cruel
-          git submodule foreach 'git checkout cruel || true'
-
-      - name: Surgical Patch for IndexError
-        # If git fix isn't enough, this Python script wipes the problematic line
-        run: |
-          python3 -c "
-          import sys
-          try:
-              with open('cruelbuild', 'r') as f:
-                  data = f.read()
-              # We use regex to replace the entire failing block regardless of spaces
-              import re
-              pattern = r'branch = run\(\[\'git\', \'submodule\'.*?splitlines\(\)\[1\]'
-              fixed_data = re.sub(pattern, 'branch = \"cruel\"', data, flags=re.DOTALL)
-              with open('cruelbuild', 'w') as f:
-                  f.write(fixed_data)
-              print('Regex patch applied successfully.')
-          except Exception as e:
-              print(f'Patch failed: {e}')
-          "
+          # Fix line 585 IndexError: bypass git branch detection
+          sed -i "s/branch = run(\['git', 'submodule'.*splitlines()\[1\]/branch = 'cruel'/g" cruelbuild
+          
+          chmod +x cruelbuild
 
       - name: Kernel Configure
+        # This section is copied EXACTLY from the developer's instructions you provided
         run: |
-          chmod +x cruelbuild
-          ./cruelbuild config \
+          ./cruelbuild config                    \
                        model=${{ matrix.model }} \
-                       name="Cruel-Hunter-Elite-120FPS" \
-                       +magisk \
-                       +wireguard \
-                       +ttl \
-                       +nohardening \
-                       +nodebug \
-                       +ntfs \
-                       +sdfat \
-                       +cifs \
-                       +morosound \
-                       +boeffla_wl_blocker \
-                       +force_dex_wqhd \
-                       +usb_serial \
-                       +empty_vbmeta \
-                       +performance \
-                       +simple_lmk \
-                       +tcp_bbr \
-                       +tcp_westwood \
-                       +io_zen \
-                       +fp_boost \
+                       name="Cruel-Hunter-Elite" \
+                       +magisk                   \
+                       +nohardening              \
+                       +ttl                      \
+                       +wireguard                \
+                       +cifs                     \
+                       +sdfat                    \
+                       +ntfs                     \
+                       +morosound                \
+                       +boeffla_wl_blocker       \
+                       +nodebug                  \
+                       +performance              \
                        +1000hz
 
       - name: Build Kernel Image
         run: |
           ./cruelbuild mkimg model=${{ matrix.model }}
 
-      - name: Upload Kernel Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Cruel-Kernel-${{ matrix.model }}
